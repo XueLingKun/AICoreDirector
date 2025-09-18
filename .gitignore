@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# 环境变量和密钥
+.env
+*.env
+
+# 日志文件
+*.log
+llm_service.log
+
+# 编辑器和操作系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Poetry/uv
+uv.lock
+
+# 服务注册表（如有敏感信息）
+service_registry.json
+service_registry.json.lock
+
+# 测试覆盖率、pytest缓存
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# 其他
+*.bak
+*.tmp 
+node_modules

@@ -1,0 +1,179 @@
+{
+  "nav": {
+    "dashboard": "LLM监控",
+    "models": "LLM列表",
+    "discovery": "服务发现",
+    "history": "调用历史",
+    "llmconfig": "LLM配置",
+    "prompt": "Prompt管理",
+    "help": "帮助"
+  },
+  "lang": {
+    "zhCN": "中文",
+    "en": "英文"
+  },
+  "discovery": {
+    "registeredServices": "注册服务列表",
+    "endpoint": "服务名/Endpoint",
+    "targetUrl": "目标地址",
+    "health": "健康状态",
+    "description": "说明",
+    "lastUpdated": "最后更新时间",
+    "noServices": "暂无注册服务",
+    "pluginAbilities": "插件能力列表",
+    "pluginName": "插件名",
+    "module": "模块",
+    "params": "参数",
+    "doc": "说明",
+    "noPlugins": "暂无插件能力"
+  }
+  ,
+  "common": {
+    "refresh": "刷新",
+    "cancel": "取消",
+    "save": "保存",
+    "saveAs": "另存",
+    "delete": "删除",
+    "restore": "恢复",
+    "deletePermanent": "彻底删除",
+    "create": "创建",
+    "errors": {
+      "saveFailed": "保存失败",
+      "saveFailedNetwork": "保存失败，请检查网络或联系管理员",
+      "selectModelAndPrompt": "请选择模型并输入提示"
+    },
+    "success": {
+      "saveSuccess": "保存成功，原文件已备份"
+    }
+  },
+  "history": {
+    "title": "调用历史",
+    "time": "时间",
+    "params": "参数",
+    "result": "结果"
+  },
+  "dashboard": {
+    "title": "LLM 状态监控",
+    "autoRefreshTip": "每20秒自动刷新",
+    "stats": {
+      "healthyModels": "健康模型数",
+      "totalQps": "总QPS",
+      "avgHitRate": "平均命中率",
+      "totalHitCount": "总命中次数"
+    },
+    "table": {
+      "modelName": "模型名称",
+      "tags": "标签",
+      "version": "版本",
+      "status": "状态",
+      "unitCost": "单位成本",
+      "health": "健康",
+      "currentConcurrency": "当前并发",
+      "maxConcurrency": "最大并发",
+      "latency": "延迟(s)",
+      "errorRate": "错误率",
+      "hitCount": "命中次数",
+      "totalCost": "累计成本"
+    },
+    "health": {"ok": "健康", "bad": "异常"},
+    "status": {
+      "available": "可用",
+      "offline": "下线",
+      "unknown": "未知"
+    },
+    "trend": {"title": "调用次数趋势", "showAll": "显示全部"}
+  }
+  ,
+  "help": {
+    "title": "帮助",
+    "hint": "请选择左侧菜单中的帮助章节。"
+  }
+  ,
+  "llmconfig": {
+    "title": "LLM 配置",
+    "add": "添加LLM",
+    "showHide": "点击显示/隐藏",
+    "status": {
+      "available": "可用",
+      "offline": "下线", 
+      "unknown": "未知"
+    },
+    "table": {
+      "name": "模型名",
+      "url": "URL地址",
+      "level": "等级",
+      "unitCost": "单位成本",
+      "status": "状态",
+      "version": "版本",
+      "tags": "标签",
+      "latency": "延迟(s)",
+      "effectScore": "效果评分",
+      "maxInput": "最大输入",
+      "supportedTasks": "支持任务",
+      "languages": "语言",
+      "description": "描述",
+      "actions": "操作"
+    },
+    "actions": {"test": "测试", "edit": "编辑", "delete": "删除"},
+    "dialog": {"title": "LLM配置"},
+    "form": {
+      "name": "模型名",
+      "url": "URL地址",
+      "level": "等级",
+      "unitCost": "单位成本",
+      "status": "状态",
+      "version": "版本",
+      "tags": "标签",
+      "maxInput": "最大输入",
+      "supportedTasks": "支持任务",
+      "languages": "语言",
+      "effectScore": "效果评分",
+      "description": "描述"
+    },
+    "test": {
+      "title": "LLM 测试",
+      "selectModel": "选择模型",
+      "prompt": "输入提示",
+      "placeholder": "请输入您的问题...",
+      "send": "发送请求",
+      "useDefault": "使用默认提示",
+      "defaultPrompt": "你好，请介绍一下你自己。",
+      "resultTitle": "调用结果：",
+      "callFail": "调用失败",
+      "callOk": "调用成功",
+      "modelOk": "模型响应正常",
+      "response": "响应内容：",
+      "details": "详细信息："
+    }
+  },
+  "promptMgr": {
+    "fileList": "文件列表",
+    "newPrompt": "新建Prompt",
+    "normalFiles": "普通文件",
+    "backupFiles": "备份文件",
+    "selectFile": "请选择文件",
+    "dialog": {
+      "newTitle": "新建Prompt文件",
+      "filenamePlaceholder": "文件名，如 my_prompt.txt",
+      "contentPlaceholder": "内容...",
+      "confirmDeleteTitle": "确认删除",
+      "deleteConfirm": "删除确认",
+      "deleteDesc": "确定要删除文件 '{file}' 吗？删除前会自动备份。",
+      "confirmDelete": "确认删除",
+      "confirmSaveTitle": "确认保存",
+      "saveConfirm": "保存确认",
+      "saveDesc": "确定要保存对 '{file}' 的修改吗？保存前会自动备份原文件。",
+      "confirmSave": "确认保存",
+      "confirmRestoreTitle": "确认恢复",
+      "restoreConfirm": "恢复确认",
+      "restoreDesc": "确定要恢复备份文件 '{file}' 吗？这将覆盖原文件。",
+      "confirmRestore": "确认恢复",
+      "confirmPermanentDeleteTitle": "确认彻底删除",
+      "permanentDeleteConfirm": "彻底删除确认",
+      "permanentDeleteDesc": "确定要彻底删除备份文件 '{file}' 吗？此操作不可恢复！",
+      "confirmPermanentDelete": "确认彻底删除"
+    }
+  }
+}
+
+

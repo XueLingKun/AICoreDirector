@@ -1,0 +1,28 @@
+models:
+  - name: deepseek-r1-think
+    url: https://api.huiyan-ai.cn/v1
+    key: sk-8MHlTtT9DoMDWqLBy0WE4m1jGgvpD1Ywchuhnk88a9bilbRB
+    version: v1.0
+    meta:
+      tags: [openai, gpt4]
+      status: 可用
+      qps: 2
+      cost: 0.002
+  - name: GLM-4-Flash
+    url: https://open.bigmodel.cn/api/paas/v4
+    key: 2eb40c7bb8e4d22b389cd9ada5a8d6cc.bAbE6g6y71TeC0on
+    version: v1.0
+    meta:
+      tags: [glm, zh]
+      status: 可用
+      qps: 2
+      cost: 0.001
+  - name: ep-20250327184200-j5g84
+    url: https://ark.cn-beijing.volces.com/api/v3/
+    key: 9f91650f-3f9b-4f41-9347-3f8fc7fc01f7
+    version: v1.0
+    meta:
+      tags: [economy, batch]
+      status: 可用
+      qps: 2
+      cost: 0.0005 

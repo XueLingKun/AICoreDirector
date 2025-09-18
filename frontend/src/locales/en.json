@@ -1,0 +1,181 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "models": "Models",
+    "discovery": "Service Discovery",
+    "history": "History",
+    "llmconfig": "LLM Config",
+    "prompt": "Prompt Manager",
+    "help": "Help"
+  },
+  "lang": {
+    "zhCN": "Chinese",
+    "en": "English"
+  },
+  "discovery": {
+    "registeredServices": "Registered Services",
+    "endpoint": "Service/Endpoint",
+    "targetUrl": "Target URL",
+    "health": "Health",
+    "description": "Description",
+    "lastUpdated": "Last Updated",
+    "noServices": "No registered services",
+    "pluginAbilities": "Plugin Abilities",
+    "pluginName": "Plugin Name",
+    "module": "Module",
+    "params": "Params",
+    "doc": "Doc",
+    "noPlugins": "No plugin abilities"
+  },
+  "common": {
+    "refresh": "Refresh"
+  },
+  "dashboard": {
+    "title": "LLM Status Dashboard",
+    "autoRefreshTip": "Auto refresh every 20s",
+    "stats": {
+      "healthyModels": "Healthy Models",
+      "totalQps": "Total QPS",
+      "avgHitRate": "Average Hit Rate",
+      "totalHitCount": "Total Hits"
+    },
+    "table": {
+      "modelName": "Model Name",
+      "tags": "Tags",
+      "version": "Version",
+      "status": "Status",
+      "unitCost": "Unit Cost",
+      "health": "Health",
+      "currentConcurrency": "Current Concurrency",
+      "maxConcurrency": "Max Concurrency",
+      "latency": "Latency(s)",
+      "errorRate": "Error Rate",
+      "hitCount": "Hit Count",
+      "totalCost": "Total Cost"
+    },
+    "health": {"ok": "Healthy", "bad": "Unhealthy"},
+    "status": {
+      "available": "Available",
+      "offline": "Offline",
+      "unknown": "Unknown"
+    },
+    "trend": {"title": "Call Trend", "showAll": "Show All"}
+  }
+  ,
+  "history": {
+    "title": "Call History",
+    "time": "Time",
+    "params": "Params",
+    "result": "Result"
+  }
+  ,
+  "help": {
+    "title": "Help",
+    "hint": "Please select a help section from the left menu."
+  }
+  ,
+  "llmconfig": {
+    "title": "LLM Config",
+    "add": "Add LLM",
+    "showHide": "Click to show/hide",
+    "status": {
+      "available": "Available",
+      "offline": "Offline",
+      "unknown": "Unknown"
+    },
+    "table": {
+      "name": "Name",
+      "url": "URL",
+      "level": "Level",
+      "unitCost": "Unit Cost",
+      "status": "Status",
+      "version": "Version",
+      "tags": "Tags",
+      "latency": "Latency(s)",
+      "effectScore": "Effect Score",
+      "maxInput": "Max Input",
+      "supportedTasks": "Supported Tasks",
+      "languages": "Languages",
+      "description": "Description",
+      "actions": "Actions"
+    },
+    "actions": {"test": "Test", "edit": "Edit", "delete": "Delete"},
+    "dialog": {"title": "LLM Config"},
+    "form": {
+      "name": "Name",
+      "url": "URL",
+      "level": "Level",
+      "unitCost": "Unit Cost",
+      "status": "Status",
+      "version": "Version",
+      "tags": "Tags",
+      "maxInput": "Max Input",
+      "supportedTasks": "Supported Tasks",
+      "languages": "Languages",
+      "effectScore": "Effect Score",
+      "description": "Description"
+    },
+    "test": {
+      "title": "LLM Test",
+      "selectModel": "Select Model",
+      "prompt": "Prompt",
+      "placeholder": "Please input your question...",
+      "send": "Send Request",
+      "useDefault": "Use Default Prompt",
+      "defaultPrompt": "Hello, please introduce yourself.",
+      "resultTitle": "Result:",
+      "callFail": "Call Failed",
+      "callOk": "Call Succeeded",
+      "modelOk": "Model responded OK",
+      "response": "Response:",
+      "details": "Details:"
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "saveAs": "Save As",
+    "delete": "Delete",
+    "restore": "Restore",
+    "deletePermanent": "Delete Permanently",
+    "create": "Create",
+    "errors": {
+      "saveFailed": "Save failed",
+      "saveFailedNetwork": "Save failed, please check network or contact administrator",
+      "selectModelAndPrompt": "Please select a model and enter a prompt"
+    },
+    "success": {
+      "saveSuccess": "Save successful, original file has been backed up"
+    }
+  },
+  "promptMgr": {
+    "fileList": "File List",
+    "newPrompt": "New Prompt",
+    "normalFiles": "Normal Files",
+    "backupFiles": "Backup Files",
+    "selectFile": "Please select a file",
+    "dialog": {
+      "newTitle": "New Prompt File",
+      "filenamePlaceholder": "Filename, e.g. my_prompt.txt",
+      "contentPlaceholder": "Content...",
+      "confirmDeleteTitle": "Confirm Delete",
+      "deleteConfirm": "Delete Confirmation",
+      "deleteDesc": "Are you sure to delete '{file}'? A backup will be created before deleting.",
+      "confirmDelete": "Confirm Delete",
+      "confirmSaveTitle": "Confirm Save",
+      "saveConfirm": "Save Confirmation",
+      "saveDesc": "Save changes to '{file}'? A backup will be created before saving.",
+      "confirmSave": "Confirm Save",
+      "confirmRestoreTitle": "Confirm Restore",
+      "restoreConfirm": "Restore Confirmation",
+      "restoreDesc": "Restore backup file '{file}'? This will overwrite the original file.",
+      "confirmRestore": "Confirm Restore",
+      "confirmPermanentDeleteTitle": "Confirm Permanent Delete",
+      "permanentDeleteConfirm": "Permanent Delete Confirmation",
+      "permanentDeleteDesc": "Permanently delete backup file '{file}'? This action cannot be undone!",
+      "confirmPermanentDelete": "Confirm Permanent Delete"
+    }
+  }
+}
+
+

@@ -166,3 +166,4 @@ Repository About:
 ## Links
 - Organization: https://github.com/AICoreDirector
 - Main Repository: https://github.com/AICoreDirector/AICoreDirector
+- Usage Guide: [USAGE.md](USAGE.md)

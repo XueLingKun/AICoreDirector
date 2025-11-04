@@ -4,7 +4,7 @@
 const config = {
   // 开发环境后端地址
   development: {
-    backendUrl: 'http://127.0.0.1:4005',
+    backendUrl: 'http://127.0.0.1:4000',
     apiTimeout: 30000,
     enableProxy: true
   },

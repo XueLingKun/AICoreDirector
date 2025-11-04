@@ -14,8 +14,10 @@
   },
   "discovery": {
     "registeredServices": "注册服务列表",
-    "endpoint": "服务名/Endpoint",
+    "endpoint": "服务名",
     "targetUrl": "目标地址",
+    "target_port": "端口",
+    "target_route": "路由",
     "health": "健康状态",
     "description": "说明",
     "lastUpdated": "最后更新时间",

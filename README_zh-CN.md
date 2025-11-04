@@ -388,7 +388,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
   - model_name：指定模型（可选）
   - tags、biz_level、prefer_cost、user_id、app_id、temperature、top_p、max_tokens、stop：同上
   - stream（可选，bool）：是否流式返回，默认false。为true时返回StreamingResponse，否则为普通JSON。
-
+  - 如果已经通过`/set_preferred_model`设置了首选模型，则忽略model_name参数。且必须需要在请求头中带上Cookie信息，session_id=
 - **返回**：
 
   - 普通JSON：`{"result": ...}`
@@ -473,9 +473,53 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
 }
 ```
 
+
 - **典型用法**：
   - 前端 LLM 配置页、模型列表页自动补全
   - 后台管理/监控页面展示所有 LLM 状态
+
+#### `/set_preferred_model` 
+
+- **方法**: POST
+- **描述**: 为当前会话设置首选模型，后续请求将优先使用该模型
+
+- **请求参数**
+```json
+{
+    "model_name": "GLM-4-Flash"
+}
+```
+- **响应结果**  
+ 设置成功后返回:
+```json
+{
+    "message": "Preferred model set to GLM-4-Flash for session e52742e1-cace-4f0f-9f51-8d54b27089d6.",
+    "preferred_model_index": 1,
+    "session_id": "e52742e1-cace-4f0f-9f51-8d54b27089d6"
+}
+```
+
+
+- **响应字段说明**
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `message` | string | 操作结果描述信息 |
+| `preferred_model_index` | integer | 首选模型在模型池中的索引位置 |
+| `session_id` | string | 当前会话ID，用于标识用户的会话状态 |
+
+- **工作原理**
+
+  - 1. 如果请求中没有携带 `session_id` Cookie，系统会自动生成一个新的会话ID
+  - 2. 系统会在模型池中查找指定的模型名称
+  - 3. 找到模型后，将该模型的索引位置存储到会话状态中
+  - 4. 后续在该会话中的请求将优先使用这个首选模型，除非显式指定其他模型
+
+- **注意事项**
+  - 首选模型设置是基于会话的，不同会话之间互不影响
+  - 如果指定的模型名称不存在，接口会返回404错误并列出可用模型
+  - 设置首选模型后，除非显式指定其他模型，否则后续调用将默认使用该模型
+
 
 #### `/service-discovery/list`  
 
@@ -490,13 +534,14 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
 ```json
 {
   "registered_services": [
-    {"endpoint": "my-ml-service", "target_url": "http://localhost:9000/predict", "health_check": "/health", "last_updated": "2024-05-01T12:00:00"}
+    {"service_name": "National-Level", "target_ip": "server-1-95-57-223.ciglobal.cn","target_port": "4000","target_route": "/national_level", "health_check": "/", "status": "available","desc": "","last_updated": "2024-05-01T12:00:00"}
   ],
   "plugin_abilities": [
     {"name": "hello_plugin", "module": "business.hello_plugin", "params": ["text"], "doc": "示例插件"}
   ]
 }
 ```
+
 
 - **边界情况**：
   - 若无注册服务，`registered_services` 为空数组。
@@ -509,6 +554,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
   "plugin_abilities": []
 }
 ```
+
 
 - **典型用法**：
   - 前端"服务发现"页面自动展示所有注册AI服务和插件能力
@@ -528,6 +574,136 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
   ]
 }
 ```
+
+
+#### `/service-registry/register`
+
+- **方法**: POST
+- **说明**: 用于将外部传统ML模型服务注册到AICoreDirector平台
+
+- **请求参数**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| `service_name` | string | 是 | 服务名称，注册后通过该名称调用服务 |
+| `target_ip` | string | 是 | 目标服务的IP地址 |
+| `target_port` | string | 是 | 目标服务的端口号 |
+| `target_route` | string | 是 | 目标服务的具体路由路径 |
+| `health_check` | string | 否 | 健康检查路径，用于平台定期检测服务可用性 |
+
+- **请求示例**  
+将国家层面标签模型注册上
+```json
+{
+  "service_name": "National-Level",
+  "target_ip": "server-1-95-57-223.ciglobal.cn",
+  "target_port": "4000",
+  "target_route": "/national_level",
+  "health_check": "/"
+}
+```
+
+
+- **响应示例**
+
+注册成功后，接口会返回类似以下格式的响应：
+
+```json
+{
+  "status": "success",
+  "registered_endpoint": "National-Level",
+  "health_status": "available"
+}
+```
+
+
+- **注册流程说明**
+
+  - 1. 外部ML服务通过调用此接口向AICoreDirector注册自身信息  
+  - 2. 平台会存储服务的元数据信息到 `service_registry`  
+  - 3. 平台会定期使用 `health_check` 路径对服务进行健康探测  
+  - 4. 注册成功后，可通过 `/{service_name}` 路径调用该服务  
+
+#### `/{service_name}` (注册时指定的服务名称)
+
+当外部传统ML服务已通过 `/service-registry/register` 接口注册到AICoreDirector平台后，用户可以通过统一入口调用该服务。
+
+- **方法**: POST/GET (支持多种HTTP方法)
+- **描述**: 通过AICoreDirector的 [dynamic_router] 动态路由自动转发请求到已注册的外部ML服务  
+- **请求参数**  
+对于示例数据，请求体应包含:
+
+```json
+{
+  "data": [
+    {
+      "id": "11111",
+      "title": "在全国开展人工智能动员大会",
+      "origin": "央视网"
+    }
+  ]
+}
+```
+
+
+- **注意事项**  
+  - 1. 参数和响应格式与外部ML服务保持一致
+  - 2. AICoreDirector会自动将请求转发到注册的服务地址
+  - 3. 支持GET/POST等多种HTTP方法
+  - 4. 实现所有AI能力的统一入口、统一监控和统一治理
+  - 5. 平台会定期对已注册服务做健康检查，确保服务可用性
+
+#### `/plugin/invoke`
+
+- **请求URL**
+  - `POST /plugin/invoke?plugin_name=插件名称`
+  
+- **请求参数**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| `plugin_name` | string | 是 | 插件名称 |
+| `payload` | object | 否 | 单条调用参数（与 `batch_payload`二选一） |
+| `batch_payload`| array | 否 | 批量调用参数（与 `payload` 二选一） |
+| `model_name` | string | 否 | 指定模型名称，如 `GLM-4-Flash` |
+
+- **payload 参数说明**  
+当使用 `payload` 进行单条调用时，结构如下：
+
+```json
+{
+  "payload": {
+    "article": "6月28日，国有企业A发布公告称，完成对B公司的重组，成为其控股股东。此次重组涉及资金10亿元。业内专家李明认为，此次重组有助于提升企业核心竞争力，推动国有企业改革。B公司主要从事新能源和高端装备制造业务."
+  },
+  "model_name": "GLM-4-Flash"
+}
+```
+
+
+- **参数详解**
+
+  - **plugin_name**: 插件函数名称，系统会根据此名称查找并调用对应的插件
+  - **payload**: 包含插件所需的具体业务参数
+    - **article**: 文本内容参数，传递给插件进行处理
+  - **model_name**: 可选的模型指定参数，用于指定使用哪个LLM模型进行处理
+
+- **批量调用示例**  
+如果需要批量处理多个文档，可以使用batch_payload：
+
+```json
+{
+  "batch_payload": [
+    {
+      "article": "文档内容1..."
+    },
+    {
+      "article": "文档内容2..."
+    }
+  ],
+  "model_name": "GLM-4-Flash"
+}
+```
+
 
 #### 提示词模板中心相关API
 
@@ -670,8 +846,18 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
 
 ```json
 {
-  "gpt-4": {"health": "healthy", "status": "可用"},
-  "my-ml-model": {"health": "unknown", "status": "下线"}
+    "deepseek-r1-think": {
+        "health": "healthy",
+        "status": "available"
+    },
+    "GLM-4-Flash": {
+        "health": "healthy",
+        "status": "available"
+    },
+    "ep-20250327184200-j5g84": {
+        "health": "healthy",
+        "status": "available"
+    }
 }
 ```
 
@@ -684,8 +870,10 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-config log_con
 
 ```json
 {
-  "gpt-4": 1234,
-  "my-ml-model": 56
+    "hit_counter": {
+        "ep-20250327184200-j5g84": 2
+    },
+    "total_request_count": 2
 }
 ```
 
@@ -1065,7 +1253,7 @@ AICoreDirector 支持通过服务注册机制集成外部传统ML模型服务，
 ## 1）. 注册外部传统ML模型服务
 
 - 外部ML服务通过 `/service-registry/register` 接口注册到AICoreDirector。
-- 注册时需提供 `endpoint`（服务名）、`target_url`（服务地址）、`health_check`（健康检查路径，可选）等信息。
+- 注册时需提供 `service_name`（服务名）、`target_ip`（服务地址）、`target_route`（调用路由）、`health_check`（健康检查路径，可选）等信息。
 - 服务方还必须要实现并暴露health_check接口，如下例子中/health接口。AICoreDirector会存储并用于主动健康探测。
 
 **注册示例：**
@@ -1075,9 +1263,11 @@ AICoreDirector 支持通过服务注册机制集成外部传统ML模型服务，
 
 import requests
 service_data = {
-    "endpoint": "my-ml-endpoint",
-    "target_url": "http://localhost:9000/predict",
-    "health_check": "/health"
+    "service_name": "National-Level",
+    "target_ip": "server-1-95-57-223.ciglobal.cn",
+    "target_port":"4000",
+    "target_route": "/national_level",
+    "health_check": "/"
 }
 resp = requests.post('http://localhost:8000/service-registry/register', json=service_data)
 print(resp.json())
@@ -1103,11 +1293,11 @@ async def generateKG(data_model: DataModel):
 ### 在您的Python服务中添加注册功能
 def register_with_llm_gateway():
     registration_data = {
-        "service_name": "knowledge_graph_generator",
-        "endpoint": "generateKG",  ### 您要暴露的端点
-        "target_url": "http://localhost:8080",  ### 您的服务实际地址
-        "health_check": "/health",  ### 健康检查端点
-        "description": "知识图谱生成服务",
+        "service_name": "National-Level",
+        "target_ip": "server-1-95-57-223.ciglobal.cn",
+        "target_port":"4000",
+        "target_route": "/national_level",
+        "description": "国家层面标签服务",
         "auth_token": "YOUR_SECRET_TOKEN"  ### 用于验证
     }
 
@@ -1125,7 +1315,7 @@ def register_with_llm_gateway():
 
 ## 2）. 上层用户调用注册的传统ML模型
 
-- 上层用户通过AICoreDirector的统一入口，直接请求 `/my-ml-endpoint`（或注册时指定的endpoint路径）。
+- 上层用户通过AICoreDirector的统一入口，直接请求 `/service_name`（注册时指定的服务名称）。
 - AICoreDirector的 `dynamic_router` 会自动将请求转发到注册的外部ML服务。
 
 **调用示例：**
@@ -1134,7 +1324,7 @@ def register_with_llm_gateway():
 示例1：
 
 import requests
-resp = requests.post('http://localhost:8000/my-ml-endpoint', json={"text": "输入文本"})
+resp = requests.post('http://localhost:8000/my-service-name', json={"text": "输入文本"})
 print(resp.json())
 
 
@@ -1142,7 +1332,7 @@ print(resp.json())
 
 documents = [document1, document2]
 response = requests.post(
-     'http://localhost:8080/generateKG',
+     'http://localhost:8080/my-service-name',
      json={"data": documents}
 )
 ```

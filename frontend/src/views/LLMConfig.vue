@@ -82,10 +82,12 @@
       <el-table-column prop="meta.description" :label="$t('llmconfig.table.description')" min-width="180" align="center" show-overflow-tooltip/>
       <el-table-column :label="$t('llmconfig.table.actions')" fixed="right" width="200" align="center">
         <template #default="scope">
-          <el-button size="small" type="success" @click="testLLM(scope.row)">{{ $t('llmconfig.actions.test') }}</el-button>
-          <el-button size="small" type="primary" @click="editLLM(scope.row)">{{ $t('llmconfig.actions.edit') }}</el-button>
-          <el-button size="small" type="danger" @click="deleteLLM(scope.row)">{{ $t('llmconfig.actions.delete') }}</el-button>
-        </template>
+         <el-button-group>
+           <el-button size="small" type="success" @click="testLLM(scope.row)">{{ $t('llmconfig.actions.test') }}</el-button>
+           <el-button size="small" type="primary" @click="editLLM(scope.row)">{{ $t('llmconfig.actions.edit') }}</el-button>
+           <el-button size="small" type="danger" @click="deleteLLM(scope.row)">{{ $t('llmconfig.actions.delete') }}</el-button>
+         </el-button-group>
+       </template>
       </el-table-column>
     </el-table>
     <!-- 添加/编辑对话框 -->

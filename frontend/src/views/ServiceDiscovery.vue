@@ -6,8 +6,10 @@
       </div>
     </template>
     <el-table size="large" :data="services" style="width: 100%" :header-cell-style="{ background: '#F5F7FA' }" v-if="services.length">
-      <el-table-column prop="endpoint" :label="$t('discovery.endpoint')" show-overflow-tooltip />
-      <el-table-column prop="target_url" :label="$t('discovery.targetUrl')" show-overflow-tooltip />
+      <el-table-column prop="service_name" :label="$t('discovery.endpoint')" show-overflow-tooltip />
+      <el-table-column prop="target_ip" :label="$t('discovery.targetUrl')" show-overflow-tooltip />
+      <el-table-column prop="target_port" :label="$t('discovery.target_port')" show-overflow-tooltip />
+      <el-table-column prop="target_route" :label="$t('discovery.target_route')" show-overflow-tooltip />
       <el-table-column prop="status" :label="$t('discovery.health')" show-overflow-tooltip />
       <el-table-column prop="desc" :label="$t('discovery.description')" show-overflow-tooltip />
       <el-table-column prop="last_update_time" :label="$t('discovery.lastUpdated')" show-overflow-tooltip />

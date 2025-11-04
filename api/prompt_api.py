@@ -2,6 +2,8 @@ from fastapi import APIRouter, Query, Body
 from fastapi.responses import JSONResponse
 import os
 
+from filelock import FileLock
+
 PROMPT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config_prompts')
 router = APIRouter()
 
@@ -27,48 +29,93 @@ def get_prompt_file(name: str = Query(...)):
 def get_prompt_file_noapi(name: str = Query(...)):
     return get_prompt_file(name)
 
+# @router.post('/prompts/file')
+# def save_prompt_file(name: str = Body(...), content: str = Body(...)):
+#     file_path = os.path.join(PROMPT_DIR, name)
+#
+#     # If file exists, create a backup (support Chinese and English suffixes)
+#     if os.path.exists(file_path):
+#         try:
+#             with open(file_path, 'r', encoding='utf-8') as f:
+#                 old_content = f.read()
+#
+#             # Create backup file name (fixed format, overwrite old backup)
+#             backup_name = f"{name}_backup"
+#             backup_path = os.path.join(PROMPT_DIR, backup_name)
+#
+#             # 如果备份文件已存在，先删除
+#             if os.path.exists(backup_path):
+#                 os.remove(backup_path)
+#                 print(f"[save_prompt_file] 删除旧备份: {backup_name}", flush=True)
+#
+#             # Create new backup
+#             with open(backup_path, 'w', encoding='utf-8') as f:
+#                 f.write(old_content)
+#             print(f"[save_prompt_file] create backup: {backup_name}", flush=True)
+#         except Exception as e:
+#             print(f"[save_prompt_file] create backup failed: {str(e)}", flush=True)
+#
+#     # Save new content
+#     with open(file_path, 'w', encoding='utf-8') as f:
+#         f.write(content)
+#     return {'status': 'success', 'name': name}
+
 @router.post('/prompts/file')
 def save_prompt_file(name: str = Body(...), content: str = Body(...)):
     file_path = os.path.join(PROMPT_DIR, name)
-    
-    # If file exists, create a backup (support Chinese and English suffixes)
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                old_content = f.read()
-            
-            # Create backup file name (fixed format, overwrite old backup)
-            backup_name = f"{name}_backup"
-            backup_path = os.path.join(PROMPT_DIR, backup_name)
-            
-            # 如果备份文件已存在，先删除
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
-                print(f"[save_prompt_file] 删除旧备份: {backup_name}", flush=True)
-            
-            # Create new backup
-            with open(backup_path, 'w', encoding='utf-8') as f:
-                f.write(old_content)
-            print(f"[save_prompt_file] create backup: {backup_name}", flush=True)
-        except Exception as e:
-            print(f"[save_prompt_file] create backup failed: {str(e)}", flush=True)
-    
-    # Save new content
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(content)
+    lock_path = file_path + ".lock"
+
+    with FileLock(lock_path):
+        # If file exists, create a backup
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    old_content = f.read()
+
+                backup_name = f"{name}_backup"
+                backup_path = os.path.join(PROMPT_DIR, backup_name)
+
+                if os.path.exists(backup_path):
+                    os.remove(backup_path)
+                    print(f"[save_prompt_file] 删除旧备份: {backup_name}", flush=True)
+
+                with open(backup_path, 'w', encoding='utf-8') as f:
+                    f.write(old_content)
+                print(f"[save_prompt_file] create backup: {backup_name}", flush=True)
+            except Exception as e:
+                print(f"[save_prompt_file] create backup failed: {str(e)}", flush=True)
+
+        # Save new content
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
     return {'status': 'success', 'name': name}
+
 
 @router.post('/file')
 def save_prompt_file_noapi(name: str = Body(...), content: str = Body(...)):
     return save_prompt_file(name, content)
 
+# @router.post('/prompts/new')
+# def new_prompt_file(name: str = Body(...), content: str = Body(...)):
+#     file_path = os.path.join(PROMPT_DIR, name)
+#     if os.path.exists(file_path):
+#         return JSONResponse(status_code=409, content={'error': 'File already exists'})
+#     with open(file_path, 'w', encoding='utf-8') as f:
+#         f.write(content)
+#     return {'status': 'created', 'name': name}
+
 @router.post('/prompts/new')
 def new_prompt_file(name: str = Body(...), content: str = Body(...)):
     file_path = os.path.join(PROMPT_DIR, name)
-    if os.path.exists(file_path):
-        return JSONResponse(status_code=409, content={'error': 'File already exists'})
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(content)
+    lock_path = file_path + ".lock"
+
+    with FileLock(lock_path):
+        if os.path.exists(file_path):
+            return JSONResponse(status_code=409, content={'error': 'File already exists'})
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
     return {'status': 'created', 'name': name}
 
 @router.post('/new')

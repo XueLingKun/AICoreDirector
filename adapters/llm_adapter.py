@@ -5,7 +5,7 @@
 
 - 调用端：只需在请求体中指定一次 model_name，后端会自动为每个批量 item 补充。
 - 后端链路：API 层通过 contextvars.set 自动注入，所有业务/插件/LLM 层无需层层传递参数。
-- LLM 层：自动从 contextvars 获取当前请求的模型名等参数，确保每条请求严格走指定模型。
+- LLM 层：自动从 contextvars 获取当前数，确保每条请求严格走指定模型。
 
 优势：
 - 无需每层函数都加 model_name 参数，代码更简洁、易维护。
@@ -473,6 +473,7 @@ class MultiLLM:
                 top_p=top_p,
                 max_tokens=max_tokens,
                 stop=stop,
+                timeout=10*60
             )
             latency = (time.time() - t0) * 1000  # ms
             s = self.llm_status[model_name_for_log]

@@ -14,8 +14,10 @@
   },
   "discovery": {
     "registeredServices": "Registered Services",
-    "endpoint": "Service/Endpoint",
+    "endpoint": "Service",
     "targetUrl": "Target URL",
+    "target_port": "Target Port",
+    "target_route": "Target Route",
     "health": "Health",
     "description": "Description",
     "lastUpdated": "Last Updated",

@@ -48,7 +48,7 @@ except Exception as e:
     print(f"Warning: Could not mount docs directory: {e}")
 
 app.include_router(prompt_api.router, prefix="/api")
-app.include_router(prompt_api.router)
+# app.include_router(prompt_api.router)
 
 SESSION_COOKIE_NAME = "session_id"
 
@@ -146,7 +146,7 @@ class ManageLLMRequest(BaseModel):
 # 新增：服务健康状态自动感知定时任务
 SERVICE_HEALTH_CHECK_INTERVAL = 60  # 秒
 
-def check_service_health(endpoint, info):
+def check_service_health(info):
     health_check = info.get("health_check")
     status = "unknown"
     if health_check:
@@ -154,7 +154,7 @@ def check_service_health(endpoint, info):
             if health_check.startswith("http://") or health_check.startswith("https://"):
                 url = health_check
             else:
-                base_url = info.get("target_url")
+                base_url = "http://" + info.get("target_ip") + ":" + str(info.get("target_port"))
                 if base_url:
                     url = base_url.rstrip("/") + "/" + health_check.lstrip("/")
                 else:
@@ -170,7 +170,7 @@ def check_service_health(endpoint, info):
 def update_all_service_status():
     changed = False
     for endpoint, info in service_registry.items():
-        new_status = check_service_health(endpoint, info)
+        new_status = check_service_health(info)
         if info.get("status") != new_status:
             info["status"] = new_status
             changed = True
@@ -193,12 +193,12 @@ async def register_service(service_data: dict):
     # 兼容description字段
     if "description" in service_data and not service_data.get("desc"):
         service_data["desc"] = service_data["description"]
-    status = check_service_health(service_data["endpoint"], service_data)
+    status = check_service_health(service_data)
     service_data["status"] = status
     service_data["last_update_time"] = get_now_str()
-    service_registry[service_data["endpoint"]] = service_data
+    service_registry[service_data["service_name"]] = service_data
     save_service_registry(service_registry)
-    return {"status": "success", "registered_endpoint": service_data["endpoint"], "health_status": status}
+    return {"status": "success", "registered_endpoint": service_data["service_name"], "health_status": status}
 
 # 启动时自动开启健康监控
 @app.on_event("startup")
@@ -272,8 +272,9 @@ def llm_stream_generator(prompt, model_name, temperature=None, top_p=None, max_t
         yield result_obj.get("result")
 
 @app.post("/llm_invoke")
-async def LLM_invoke(request: LLMInvokeRequest, stream: bool = Query(False)):
+async def LLM_invoke(request: LLMInvokeRequest, stream: bool = Query(False), session_id: str = Cookie(None)):
     print(f"[LLM_invoke] 收到请求: prompt='{request.prompt[:50]}...', model_name='{request.model_name}', stream={stream}")
+    print(session_id)
     # --- 自动设置 LLM 路由上下文 ---
     llm_context.set(request.dict())
     prompt = request.prompt
@@ -288,34 +289,58 @@ async def LLM_invoke(request: LLMInvokeRequest, stream: bool = Query(False)):
     max_tokens = request.max_tokens
     stop = request.stop
     used_model = None
+
+    global llm_manager
+
+    # todo 251020 首选会话中的模型设置
+    # 如果没有指定模型，则尝试使用会话中的首选模型
+    target_model_name = None
+
+    if model_name:
+        # 如果请求中明确指定了模型，使用指定的模型
+        target_model_name = model_name
+        print(f"[LLM_invoke] 使用请求指定的模型: {target_model_name}")
+    elif session_id:
+        # 如果没有指定模型，使用会话的首选模型
+        preferred_index = state_manager.get_preferred_model_index(session_id)
+        if preferred_index is not None and 0 <= preferred_index < len(llm_manager.models):
+            target_model_name = llm_manager.models[preferred_index]["name"]
+            print(f"[LLM_invoke] 使用会话 {session_id} 的首选模型: {target_model_name}")
+
     try:
-        global llm_manager
-        if model_name:
-            idx = next((i for i, m in enumerate(llm_manager.models) if m["name"] == model_name), None)
+        # 如果通过以上逻辑确定了目标模型
+        if target_model_name:
+            idx = next((i for i, m in enumerate(llm_manager.models) if m["name"] == target_model_name), None)
             if idx is not None:
                 model = llm_manager.models[idx]
-                if qps_monitor.is_limited(model_name, model.get("qps", 0)):
-                    return JSONResponse(content={"error": "QPS limit exceeded for model", "model": model_name}, status_code=429)
-                qps_monitor.record(model_name)
+                if qps_monitor.is_limited(target_model_name, model.get("qps", 0)):
+                    return JSONResponse(content={"error": "QPS limit exceeded for model", "model": target_model_name},
+                                        status_code=429)
+                qps_monitor.record(target_model_name)
                 if health_checker:
-                    health_checker.notify_model_active(model_name)
+                    health_checker.notify_model_active(target_model_name)
+            else:
+                return JSONResponse(content={"error": f"Model {target_model_name} not found"}, status_code=404)
         else:
+            # 如果既没有指定模型也没有会话首选模型，使用路由选择
             try:
                 model = router.select_model(tags=tags, biz_level=biz_level, prefer_cost=prefer_cost)
+                target_model_name = model["name"]
+                if qps_monitor.is_limited(target_model_name, model.get("qps", 0)):
+                    return JSONResponse(content={"error": "QPS limit exceeded for model", "model": target_model_name},
+                                        status_code=429)
+                qps_monitor.record(target_model_name)
+                if health_checker:
+                    health_checker.notify_model_active(target_model_name)
             except Exception as e:
                 return JSONResponse(content={"error": str(e)}, status_code=404)
-            model_name = model["name"]
-            if qps_monitor.is_limited(model_name, model.get("qps", 0)):
-                return JSONResponse(content={"error": "QPS limit exceeded for model", "model": model_name}, status_code=429)
-            qps_monitor.record(model_name)
-            if health_checker:
-                health_checker.notify_model_active(model_name)
+
         # 成本统计初始化（已移至新的统计系统）
         if stream:
             def stream_gen():
                 yield from llm_stream_generator(
                     prompt=prompt,
-                    model_name=model_name,
+                    model_name=target_model_name,  # 使用修正后的模型名称
                     temperature=temperature,
                     top_p=top_p,
                     max_tokens=max_tokens,
@@ -323,20 +348,24 @@ async def LLM_invoke(request: LLMInvokeRequest, stream: bool = Query(False)):
                     user_id=user_id,
                     app_id=app_id
                 )
+
             return StreamingResponse(stream_gen(), media_type="text/plain")
+
         # 非流式同步返回
         result_obj = llm_manager.generate_with_specific_model(
             prompt=prompt,
-            model_name=model_name,
+            model_name=target_model_name,  # 使用修正后的模型名称
             temperature=temperature,
             top_p=top_p,
             max_tokens=max_tokens,
             stop=stop
         )
-        used_model = model_name
+        used_model = target_model_name  # 使用修正后的模型名称
+
         # 只记录用户应用维度的成本统计，避免重复记录
         from core.statistics import record_model_cost_user_app
-        record_model_cost_user_app(model_name, user_id, app_id, result_obj.get("cost") or 0.0)
+        record_model_cost_user_app(target_model_name, user_id, app_id, result_obj.get("cost") or 0.0)
+
         return JSONResponse(content={
             "result": result_obj.get("result"),
             "used_model": used_model,
@@ -345,6 +374,7 @@ async def LLM_invoke(request: LLMInvokeRequest, stream: bool = Query(False)):
             "user_id": user_id,
             "app_id": app_id
         })
+
     except ValueError as e:
         return JSONResponse(
             content={
@@ -456,7 +486,7 @@ async def get_openapi_schema():
 
 @app.post("/service-registry/unregister")
 async def unregister_service(service_data: dict):
-    endpoint = service_data["endpoint"]
+    endpoint = service_data["service_name"]
     if endpoint in service_registry:
         del service_registry[endpoint]
         save_service_registry(service_registry)
@@ -512,8 +542,8 @@ async def dynamic_router(request: Request, path: str):
     
     if path in service_registry:
         service_info = service_registry[path]
-        target_url = service_info["target_url"].rstrip("/")
-        url = f"{target_url}/{path}"
+        target_url = "http://" + service_info["target_ip"] + ":" + service_info["target_port"]
+        url = f"{target_url}/{service_info['target_route']}"
         try:
             # 过滤掉可能导致下游异常的headers
             excluded_headers = {"host", "content-length", "accept-encoding", "connection"}
@@ -700,8 +730,10 @@ async def service_discovery_list():
     services = []
     for endpoint, info in latest_registry.items():
         services.append({
-            "endpoint": endpoint,
-            "target_url": info.get("target_url"),
+            "service_name": endpoint,
+            "target_ip": info.get("target_ip"),
+            "target_port": info.get("target_port"),
+            "target_route": info.get("target_route"),
             "health_check": info.get("health_check"),
             "status": info.get("status", "unknown"),
             "desc": info.get("desc", ""),
@@ -749,57 +781,175 @@ async def batch_concurrent(items, handler, max_concurrency=10):
 
 history_records = []
 
+# @app.post("/plugin/invoke")
+# async def plugin_invoke(
+#     plugin_name: str,
+#     model_name: str = Body(None),
+#     payload: dict = Body(None),
+#     batch_payload: list = Body(None),
+#     request: Request = None,
+#     session_id: str = Cookie(None)
+# ):
+#     print(f"========当前的model_name为：{model_name}========")
+#     # --- 自动设置 LLM 路由上下文 ---
+#     llm_params = (payload or {}).copy()
+#     # 优先从 session 读取 preferred_index
+#     sid = session_id or (request.cookies.get("session_id") if request else None)
+#     preferred_index = None
+#     if sid:
+#         preferred_index = state_manager.get_preferred_model_index(sid)
+#         if preferred_index is not None:
+#             # 获取模型名
+#             global llm_manager
+#             if 0 <= preferred_index < len(llm_manager.models):
+#                 preferred_model_name = llm_manager.models[preferred_index]["name"]
+#                 # 只有未显式指定 model_name 时才注入
+#                 if not model_name:
+#                     llm_params["model_name"] = preferred_model_name
+#     if batch_payload and isinstance(batch_payload, list) and len(batch_payload) > 0 and isinstance(batch_payload[0], dict):
+#         # todo 251021 model_name 不需要 后面会统一给指定的model_name
+#         for k in ["model_name", "temperature", "tags", "biz_level", "prefer_cost", "session_id", "preferred_index", "top_p", "max_tokens", "stop"]:
+#         # for k in ["temperature", "tags", "biz_level", "prefer_cost", "session_id", "preferred_index", "top_p", "max_tokens", "stop"]:
+#             if k in batch_payload[0]:
+#                 llm_params[k] = batch_payload[0][k]
+#     llm_context.set(llm_params)
+#     # print(f"==================={llm_params}=================")
+#     if not PLUGINS_BATCH_DISPATCH_ENABLED:
+#         return JSONResponse(content={"error": "插件批量分发功能已关闭"}, status_code=403)
+#     plugin_func = None
+#     if plugin_name in plugin_registry:
+#         # print(f"==================={plugin_registry}=================")
+#         plugin_func, _ = plugin_registry[plugin_name]
+#     else:
+#         return JSONResponse(content={"error": f"Plugin {plugin_name} not found"}, status_code=404)
+#     sig = inspect.signature(plugin_func)
+#     params = sig.parameters
+#     # 批量处理
+#     if batch_payload is not None:
+#         # --- 强制为每个 item 设置 model_name ---
+#         outer_model_name = model_name
+#         if outer_model_name:
+#             batch_payload = [
+#                 {**item, "model_name": outer_model_name} if isinstance(item, dict) else item
+#                 for item in batch_payload
+#             ]
+#         # --- END ---
+#         if any(p in params for p in ["articles", "batch_payload", "docs", "inputs"]):
+#             batch_param = next(p for p in ["articles", "batch_payload", "docs", "inputs"] if p in params)
+#             result = plugin_func(**{batch_param: batch_payload})
+#             history_records.append({
+#                 "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+#                 "api": f"/plugin/invoke?plugin_name={plugin_name}",
+#                 "service_name": plugin_name,
+#                 "service_type": "plugin",
+#                 "method": "POST",
+#                 "params": batch_payload,
+#                 "result": result
+#             })
+#             return {"result": result}
+#         else:
+#             results = await batch_concurrent(batch_payload, plugin_func, max_concurrency=5)
+#             history_records.append({
+#                 "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+#                 "api": f"/plugin/invoke?plugin_name={plugin_name}",
+#                 "service_name": plugin_name,
+#                 "service_type": "plugin",
+#                 "method": "POST",
+#                 "params": batch_payload,
+#                 "result": results
+#             })
+#             return {"results": results}
+#     elif payload is not None:
+#         if asyncio.iscoroutinefunction(plugin_func):
+#             result = await plugin_func(**payload)
+#         else:
+#             result = plugin_func(**payload)
+#         history_records.append({
+#             "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+#             "api": f"/plugin/invoke?plugin_name={plugin_name}",
+#             "service_name": plugin_name,
+#             "service_type": "plugin",
+#             "method": "POST",
+#             "params": payload,
+#             "result": result
+#         })
+#         return {"result": result}
+#     else:
+#         return JSONResponse(content={"error": "参数错误，需提供 payload 或 batch_payload"}, status_code=400)
+
+
 @app.post("/plugin/invoke")
 async def plugin_invoke(
-    plugin_name: str,
-    model_name: str = Body(None),
-    payload: dict = Body(None),
-    batch_payload: list = Body(None),
-    request: Request = None,
-    session_id: str = Cookie(None)
+        plugin_name: str,
+        model_name: str = Body(None),
+        payload: dict = Body(None),
+        batch_payload: list = Body(None),
+        request: Request = None,
+        session_id: str = Cookie(None)
 ):
     # --- 自动设置 LLM 路由上下文 ---
-    llm_params = (payload or {}).copy()
+    llm_params = {}
+    print(f"当前传入的model_name: {model_name}")
     # 优先从 session 读取 preferred_index
     sid = session_id or (request.cookies.get("session_id") if request else None)
     preferred_index = None
     if sid:
         preferred_index = state_manager.get_preferred_model_index(sid)
         if preferred_index is not None:
-                        # 获取模型名
             global llm_manager
             if 0 <= preferred_index < len(llm_manager.models):
                 preferred_model_name = llm_manager.models[preferred_index]["name"]
                 # 只有未显式指定 model_name 时才注入
                 if not model_name:
-                    llm_params["model_name"] = preferred_model_name
-    if batch_payload and isinstance(batch_payload, list) and len(batch_payload) > 0 and isinstance(batch_payload[0], dict):
-        for k in ["model_name", "temperature", "tags", "biz_level", "prefer_cost", "session_id", "preferred_index", "top_p", "max_tokens", "stop"]:
-            if k in batch_payload[0]:
-                llm_params[k] = batch_payload[0][k]
-    llm_context.set(llm_params)
+                    model_name = preferred_model_name
+
+    # 统一处理：将单条调用转换为批量调用格式
+    if payload is not None and batch_payload is None:
+        # 将单条调用转换为批量调用
+        batch_payload = [payload]
+        payload = None  # 清空单条payload，后续按批量处理
+
+    # 处理批量调用（包括转换后的单条调用）
+    if batch_payload and isinstance(batch_payload, list) and len(batch_payload) > 0:
+        # 统一应用外层 model_name 到每个批次项
+        if model_name:
+            for i, item in enumerate(batch_payload):
+                if isinstance(item, dict):
+                    batch_payload[i] = {**item, "model_name": model_name}
+
+        # 设置 LLM 上下文（使用 model_name 和其他可能的参数）
+        context_params = {"model_name": model_name} if model_name else {}
+        if isinstance(batch_payload[0], dict):
+            first_item = batch_payload[0]
+            # 只提取LLM相关参数，排除内容参数
+            llm_related_keys = ["temperature", "top_p", "max_tokens", "stop", "tags", "biz_level", "prefer_cost",
+                                "user_id", "app_id"]
+            for key in llm_related_keys:
+                if key in first_item:
+                    context_params[key] = first_item[key]
+
+        llm_context.set(context_params)
+        print(f"========{context_params}=========")
+
     if not PLUGINS_BATCH_DISPATCH_ENABLED:
         return JSONResponse(content={"error": "插件批量分发功能已关闭"}, status_code=403)
+
     plugin_func = None
     if plugin_name in plugin_registry:
         plugin_func, _ = plugin_registry[plugin_name]
     else:
         return JSONResponse(content={"error": f"Plugin {plugin_name} not found"}, status_code=404)
+
     sig = inspect.signature(plugin_func)
     params = sig.parameters
-    # 批量处理
+
+    # 统一批量处理（包括单条转换后的情况）
     if batch_payload is not None:
-        # --- 强制为每个 item 设置 model_name ---
-        outer_model_name = model_name
-        if outer_model_name:
-            batch_payload = [
-                {**item, "model_name": outer_model_name} if isinstance(item, dict) else item
-                for item in batch_payload
-            ]
-        # --- END ---
         if any(p in params for p in ["articles", "batch_payload", "docs", "inputs"]):
             batch_param = next(p for p in ["articles", "batch_payload", "docs", "inputs"] if p in params)
             result = plugin_func(**{batch_param: batch_payload})
+
+            # 记录历史
             history_records.append({
                 "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                 "api": f"/plugin/invoke?plugin_name={plugin_name}",
@@ -809,9 +959,15 @@ async def plugin_invoke(
                 "params": batch_payload,
                 "result": result
             })
+
+            # 如果是单条调用转换的，返回单条格式
+            if len(batch_payload) == 1 and payload is None:
+                return {"result": result[0]["result"] if isinstance(result, list) and len(result) == 1 else result}
             return {"result": result}
         else:
             results = await batch_concurrent(batch_payload, plugin_func, max_concurrency=5)
+
+            # 记录历史
             history_records.append({
                 "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                 "api": f"/plugin/invoke?plugin_name={plugin_name}",
@@ -821,19 +977,11 @@ async def plugin_invoke(
                 "params": batch_payload,
                 "result": results
             })
+
+            # 如果是单条调用转换的，返回单条格式
+            if len(batch_payload) == 1 and payload is None:
+                return {"result": results[0]["result"] if isinstance(results, list) and len(results) == 1 else results}
             return {"results": results}
-    elif payload is not None:
-        result = plugin_func(**payload)
-        history_records.append({
-            "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            "api": f"/plugin/invoke?plugin_name={plugin_name}",
-            "service_name": plugin_name,
-            "service_type": "plugin",
-            "method": "POST",
-            "params": payload,
-            "result": result
-        })
-        return {"result": result}
     else:
         return JSONResponse(content={"error": "参数错误，需提供 payload 或 batch_payload"}, status_code=400)
 

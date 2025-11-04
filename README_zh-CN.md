@@ -197,7 +197,7 @@ QPS与命中率监控：实时统计各模型QPS与命中率，支持流量治�
 
 ## 4.1 总体架构图
 
-![总体架构图1](/docs/总体架构图1.png)
+![总体架构图1](assets/E5CML_NLP5Ccodeandcourse5CAIHub5Cdocs5CE680BBE4BD93E69EB6E69E84E59BBE1.png)
 
 
 
